@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 using namespace std;
 
@@ -14,7 +15,6 @@ class Process
 		void resume();
 		void task();
 		int getPid();
-		sem_t mutex;
 		static void signalHandler(int sig);
 		Process();
 };
@@ -22,13 +22,11 @@ class Process
 Process::Process(void)
 {
 	if (signal(SIGUSR1, signalHandler) == SIG_ERR)
-        printf("Unable to create handler for SIGUSR1\n");
+		printf("Unable to create handler for SIGUSR1\n");
 
-    if (signal(SIGUSR2, signalHandler) == SIG_ERR)
-        printf("Unable to create handler for SIGUSR2\n");
+	if (signal(SIGUSR2, signalHandler) == SIG_ERR)
+		printf("Unable to create handler for SIGUSR2\n");
 
-    // intialize mutex lock with 0 i.e Process started in wait state
-    sem_init(&mutex,0,0);
 }
 
 void Process::wait()
@@ -41,9 +39,28 @@ void Process::resume()
 	kill(getpid(), SIGUSR2);	
 }
 
+// This task is user dependent can change accordingly
+// Here I have added a task of sorting array using bubble sort
+
 void Process::task()
 {
-
+	int t = (rand()%10+1) * 100; // random number between 100 to 1000
+	int a[t];
+	for(int i=0;i<t;i++)
+	{
+		a[i] = (rand()%10);
+	}
+	int i,j;
+    for(i=0;i<t;i++)
+    {
+        for(j=i+1;j<t;j++)
+        {
+            if(a[j]<a[i])
+            {
+                swap(a[i],a[j]);
+            }
+        }
+    }
 }
 
 int Process::getPid()
@@ -56,10 +73,12 @@ void Process::signalHandler(int sig)
 	if(sig==SIGUSR1)
 	{
 		// issue a wait mutex
+		kill(getpid(), SIGSTOP);
 	}
 	else if(sig==SIGUSR2)
 	{
 		// issue a signal mutex
+		kill(getpid(), SIGCONT);
 	}
 	else
 	{
