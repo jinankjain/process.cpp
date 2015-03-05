@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <semaphore.h>
 #include <pthread.h>
 
@@ -10,33 +12,24 @@ using namespace std;
 
 class Process
 {
-	public:
-		void wait();
-		void resume();
-		void task();
-		int getPid();
-		static void signalHandler(int sig);
-		Process();
+    public:
+        void waiti();
+        void resume();
+        void task();
+        int getPid();
+        static void signalHandler(int sig);
+        //Process();
 };
 
-Process::Process(void)
+
+void Process::waiti()
 {
-	if (signal(SIGUSR1, signalHandler) == SIG_ERR)
-		printf("Unable to create handler for SIGUSR1\n");
-
-	if (signal(SIGUSR2, signalHandler) == SIG_ERR)
-		printf("Unable to create handler for SIGUSR2\n");
-
-}
-
-void Process::wait()
-{
-	kill(getpid(), SIGUSR1);
+    kill(getpid(), SIGSTOP);
 }
 
 void Process::resume()
 {
-	kill(getpid(), SIGUSR2);	
+    kill(getpid(), SIGCONT);    
 }
 
 // This task is user dependent can change accordingly
@@ -44,13 +37,14 @@ void Process::resume()
 
 void Process::task()
 {
-	int t = (rand()%10+1) * 100; // random number between 100 to 1000
-	int a[t];
-	for(int i=0;i<t;i++)
-	{
-		a[i] = (rand()%10);
-	}
-	int i,j;
+    waiti();
+    int t = (rand()%10+1) * 100; // random number between 100 to 1000
+    int a[t];
+    for(int i=0;i<t;i++)
+    {
+        a[i] = (rand()%10);
+    }
+    int i,j;
     for(i=0;i<t;i++)
     {
         for(j=i+1;j<t;j++)
@@ -65,28 +59,81 @@ void Process::task()
 
 int Process::getPid()
 {
-	return getpid();
+    return getpid();
 }
 
 void Process::signalHandler(int sig)
 {
-	if(sig==SIGUSR1)
-	{
-		// issue a wait mutex
-		kill(getpid(), SIGSTOP);
-	}
-	else if(sig==SIGUSR2)
-	{
-		// issue a signal mutex
-		kill(getpid(), SIGCONT);
-	}
-	else
-	{
-		printf("Unknown signal\n");
-	}
+    if(sig==SIGUSR1)
+    {
+        // issue a wait mutex
+        kill(getpid(), SIGSTOP);
+    }
+    else if(sig==SIGUSR2)
+    {
+        // issue a signal mutex
+        kill(getpid(), SIGCONT);
+    }
+    else
+    {
+        printf("Unknown signal\n");
+    }
+}
+
+struct ProcessTable
+{
+    Process p;
+};
+
+class ProcessTableList
+{
+    public:
+        int addProcess();
+        void removeProcess(pid_t pid);
+};
+
+int ProcessTableList::addProcess()
+{
+    pid_t child = fork();
+    if(child == 0)
+    {
+        Process p;
+        p.task(); 
+        return child;
+    }
+    else if(child > 0)
+    {
+        return child;
+        //system("ps -aux | grep a.out");
+    }
+    else
+    {
+        perror("Bad fork()"); exit(1);
+    }
+    
+}
+
+void ProcessTableList::removeProcess(pid_t pid)
+{
+
 }
 
 int main()
 {
-	return 0;
+    
+
+    int a[10]; // Array storing list of pids
+
+    ProcessTableList plist;
+    for(int i=0;i<10;i++)
+    {
+        a[i] = plist.addProcess();
+    }
+    int i=0;
+    for(i=0;i<10;i++)
+    {
+        cout<<a[i]<<endl;
+    }
+    
+    return 0;
 }
