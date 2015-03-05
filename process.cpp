@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <sys/wait.h>
 
 using namespace std;
 
@@ -95,6 +96,7 @@ class ProcessTableList
 int ProcessTableList::addProcess()
 {
     pid_t child = fork();
+    //int status=0;
     if(child == 0)
     {
         Process p;
@@ -103,6 +105,7 @@ int ProcessTableList::addProcess()
     }
     else if(child > 0)
     {
+        //waitpid(-1, NULL, 0);
         return child;
         //system("ps -aux | grep a.out");
     }
@@ -134,6 +137,16 @@ int main()
     {
         cout<<a[i]<<endl;
     }
-    
+
+    // Wait all the child process to get finished
+    for (i = 0; i < 10; ++i) {
+        int status;
+        while (-1 == waitpid(a[i], &status, 0));
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+            cerr << "Process " << i << " (pid " << a[i] << ") failed" << endl;
+            exit(1);
+        }
+    }
+
     return 0;
 }
